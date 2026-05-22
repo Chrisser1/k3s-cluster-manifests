@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: chrisgthomsen/gymbros-backend:latest
+          image: chrisgthomsen/gymbros-backend:7484934386563a6b11102a912355476e1d74bbff
           env:
             - name: DB_HOST
               value: gymbros-db
