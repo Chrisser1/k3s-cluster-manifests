@@ -1,0 +1,37 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gymbros-frontend
+  namespace: gymbros
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gymbros-frontend
+  template:
+    metadata:
+      labels:
+        app: gymbros-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: chrisgthomsen/gymbros-frontend:latest
+          ports:
+            - containerPort: 80
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gymbros-frontend
+  namespace: gymbros
+spec:
+  type: LoadBalancer
+  selector:
+    app: gymbros-frontend
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80
