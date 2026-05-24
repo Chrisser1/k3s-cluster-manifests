@@ -6,7 +6,7 @@ metadata:
 spec:
   parentRefs:
     - name: gymbros-gateway
-      namespace: gymbros
+      namespace: gymbros # Explicitly naming the namespace
       sectionName: http
   hostnames:
     - "158.180.42.198.nip.io"
@@ -17,6 +17,7 @@ spec:
             value: /.well-known/acme-challenge/
       backendRefs:
         - name: cm-acme-http-solver
+          namespace: gymbros
           port: 8089
     - matches:
         - path:
