@@ -21,7 +21,3 @@ spec:
       allowedRoutes:
         namespaces:
           from: Same
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: gymbros-frontend-tls
