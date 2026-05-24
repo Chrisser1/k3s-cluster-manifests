@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: chrisgthomsen/gymbros-frontend:latest
+          image: chrisgthomsen/gymbros-frontend:7484934386563a6b11102a912355476e1d74bbff
           ports:
             - containerPort: 80
 
