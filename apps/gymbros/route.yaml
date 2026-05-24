@@ -13,6 +13,14 @@ spec:
     - matches:
         - path:
             type: PathPrefix
+            value: /.well-known/acme-challenge/
+      backendRefs:
+        - name: cm-acme-http-solver
+          port: 8089 
+    
+    - matches:
+        - path:
+            type: PathPrefix
             value: /
       backendRefs:
         - name: gymbros-frontend
