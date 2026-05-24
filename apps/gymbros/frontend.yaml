@@ -27,7 +27,7 @@ metadata:
   name: gymbros-frontend
   namespace: gymbros
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: gymbros-frontend
   ports:

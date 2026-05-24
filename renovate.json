@@ -1,0 +1,20 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "argocd": {
+    "fileMatch": ["argocd-apps/.*\\.yaml$"]
+  },
+  "packageRules": [
+    {
+      "matchDatasources": ["helm"],
+      "groupName": "helm charts",
+      "automerge": false
+    },
+    {
+      "matchPackageNames": ["traefik"],
+      "schedule": ["before 5am on monday"] 
+    }
+  ]
+}
