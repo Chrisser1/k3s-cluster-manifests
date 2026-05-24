@@ -6,7 +6,7 @@ metadata:
 spec:
   parentRefs:
     - name: gymbros-gateway
-      namespace: gymbros # Explicitly naming the namespace
+      namespace: gymbros
       sectionName: http
   hostnames:
     - "158.180.42.198.nip.io"
@@ -25,4 +25,5 @@ spec:
             value: /
       backendRefs:
         - name: gymbros-frontend
+          namespace: gymbros
           port: 80
