@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: 'https://helm.traefik.io/traefik'
     chart: traefik
-    targetRevision: 40.2.0
+    targetRevision: 26.1.0
     helm:
       values: |
         providers:
@@ -31,5 +31,5 @@ spec:
     automated:
       prune: true
       selfHeal: true
-  syncOptions:
-    - CreateNamespace=true
+    syncOptions:
+      - CreateNamespace=true
