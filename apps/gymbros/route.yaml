@@ -7,6 +7,7 @@ spec:
   parentRefs:
     - name: gymbros-gateway
       namespace: gymbros
+      sectionName: http
   hostnames:
     - "158.180.42.198.nip.io"
   rules:
@@ -16,8 +17,7 @@ spec:
             value: /.well-known/acme-challenge/
       backendRefs:
         - name: cm-acme-http-solver
-          port: 8089 
-    
+          port: 8089
     - matches:
         - path:
             type: PathPrefix
