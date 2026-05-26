@@ -5,7 +5,9 @@
   ],
   "platformAutomerge": true,
   "argocd": {
-    "fileMatch": ["^argocd-apps/.*\\.yaml$"]
+    "managerFilePatterns": [
+      "/^argocd-apps/.*\\.yaml$/"
+    ]
   },
   "packageRules": [
     {
