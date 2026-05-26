@@ -1,7 +1,7 @@
 backend:
   image:
     repository: chrisgthomsen/gymbros-backend
-    tag: v1.0.1
+    tag: v1.1.0
   replicas: 1
 
 frontend:
