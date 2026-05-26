@@ -1,13 +1,13 @@
 backend:
   image:
     repository: chrisgthomsen/gymbros-backend
-    tag: 7484934386563a6b11102a912355476e1d74bbff
+    tag: v1.0.0
   replicas: 1
 
 frontend:
   image:
     repository: chrisgthomsen/gymbros-frontend
-    tag: 7484934386563a6b11102a912355476e1d74bbff
+    tag: v1.0.0
   replicas: 1
 
 database:
