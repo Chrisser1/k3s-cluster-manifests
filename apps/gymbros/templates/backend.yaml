@@ -3,9 +3,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: gymbros-backend
-  namespace: gymbros
+  namespace: {{ .Release.Namespace }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.backend.replicas }}
   selector:
     matchLabels:
       app: gymbros-backend
@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: chrisgthomsen/gymbros-backend:7484934386563a6b11102a912355476e1d74bbff
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
           env:
             - name: DB_HOST
               value: gymbros-db

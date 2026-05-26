@@ -10,11 +10,25 @@
   },
   "packageRules": [
     {
+      "description": "Default: Do not automerge Helm charts",
       "matchDatasources": ["helm"],
       "groupName": "helm charts",
       "automerge": false
     },
     {
+      "description": "Trust list: Automerge these specific Helm charts",
+      "matchDatasources": ["helm"],
+      "matchPackageNames": ["gymbros", "ingress-nginx", "cert-manager"],
+      "automerge": true
+    },
+    {
+      "description": "Docker: Automerge minor and patch updates",
+      "matchDatasources": ["docker"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    },
+    {
+      "description": "Traefik: Update on Monday",
       "matchPackageNames": ["traefik"],
       "schedule": ["before 5am on monday"] 
     }
