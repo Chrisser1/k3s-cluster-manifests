@@ -3,10 +3,9 @@
   "extends": [
     "config:recommended"
   ],
+  "platformAutomerge": true,
   "argocd": {
-    "managerFilePatterns": [
-      "/argocd-apps/.*\\.yaml$/"
-    ]
+    "fileMatch": ["^argocd-apps/.*\\.yaml$"]
   },
   "packageRules": [
     {
