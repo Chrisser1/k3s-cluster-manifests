@@ -25,6 +25,8 @@ minecraft:
   initContainers:
     - name: download-modpack
       image: alpine:latest
+      securityContext:
+        runAsUser: 0
       command: ["/bin/sh", "-c"]
       args:
         - |
