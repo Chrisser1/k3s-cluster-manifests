@@ -15,6 +15,38 @@ spec:
       labels:
         app: minecraft
     spec:
+      initContainers:
+        - name: download-modpack
+          image: alpine:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              if [ -d /data/mods ] && [ "$(ls -A /data/mods 2>/dev/null)" ]; then
+                echo "Modpack already installed, skipping download"
+                exit 0
+              fi
+              apk add --no-cache curl jq unzip
+              echo "Fetching download URL from CurseForge API..."
+              DOWNLOAD_URL=$(curl -sf \
+                -H "x-api-key: ${CF_API_KEY}" \
+                "https://api.curseforge.com/v1/mods/1082278/files/7488393/download-url" | \
+                jq -r '.data')
+              echo "Downloading server pack (~926MB) from: ${DOWNLOAD_URL}"
+              curl -L -o /tmp/serverpack.zip "${DOWNLOAD_URL}"
+              echo "Extracting server pack to /data..."
+              cd /data && unzip -o /tmp/serverpack.zip
+              rm /tmp/serverpack.zip
+              echo "Modpack installation complete"
+          env:
+            - name: CF_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minecraft-secrets
+                  key: CF_API_KEY
+          volumeMounts:
+            - name: data
+              mountPath: /data
       containers:
         - name: minecraft
           image: "{{ .Values.minecraft.image.repository }}:{{ .Values.minecraft.image.tag }}"
@@ -26,16 +58,10 @@ spec:
           env:
             - name: EULA
               value: "TRUE"
+            - name: TYPE
+              value: "FORGE"
             - name: VERSION
               value: "1.20.1"
-            # Biohazard: Project Genesis server pack (Minecraft 1.20.1 / Forge)
-            - name: CF_PAGE_URL
-              value: "https://www.curseforge.com/minecraft/modpacks/biohazard-project-genesis"
-            - name: CF_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: minecraft-secrets
-                  key: CF_API_KEY
             - name: MEMORY
               value: "{{ .Values.minecraft.memory }}"
             - name: USE_AIKAR_FLAGS
