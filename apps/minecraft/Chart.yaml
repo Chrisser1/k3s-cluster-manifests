@@ -3,3 +3,7 @@ name: minecraft
 description: Helm chart for Biohazard Project Genesis Minecraft server
 type: application
 version: 0.1.0
+dependencies:
+  - name: minecraft
+    repository: https://itzg.github.io/minecraft-server-charts/
+    version: "5.1.3"
