@@ -10,6 +10,10 @@ minecraft:
     memory: 8192M
     motd: "Biohazard: Project Genesis"
     overrideServerProperties: true
+    rcon:
+      enabled: true
+      existingSecret: minecraft-rcon
+      secretKey: rcon-password
 
   resources:
     requests:
