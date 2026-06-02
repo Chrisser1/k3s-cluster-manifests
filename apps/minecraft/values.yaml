@@ -12,8 +12,7 @@ minecraft:
     overrideServerProperties: true
     rcon:
       enabled: true
-      existingSecret: minecraft-rcon
-      secretKey: rcon-password
+      password: "changeme123"
 
   resources:
     requests:
