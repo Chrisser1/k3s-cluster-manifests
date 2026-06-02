@@ -27,7 +27,7 @@ spec:
             - name: EULA
               value: "TRUE"
             - name: TYPE
-              value: "AUTO"
+              value: "FORGE"
             # Biohazard: Project Genesis server pack (Minecraft 1.20.1 / Forge)
             - name: CF_PAGE_URL
               value: "https://www.curseforge.com/minecraft/modpacks/biohazard-project-genesis/files/7488393"
