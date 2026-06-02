@@ -24,29 +24,47 @@ minecraft:
 
   initContainers:
     - name: download-modpack
-      image: alpine:latest
+      image: python:3-slim
       securityContext:
-        runAsUser: 0
-      command: ["/bin/sh", "-c"]
+        runAsUser: 1000
+        runAsGroup: 1000
+      command: ["python3", "-c"]
       args:
         - |
-          set -e
-          if [ -d /data/mods ] && [ "$(ls -A /data/mods 2>/dev/null)" ]; then
-            echo "Modpack already installed, skipping download"
-            exit 0
-          fi
-          apk add --no-cache curl jq unzip
-          echo "Fetching download URL from CurseForge API..."
-          DOWNLOAD_URL=$(curl -sf \
-            -H "x-api-key: ${CF_API_KEY}" \
-            "https://api.curseforge.com/v1/mods/1082278/files/7488393/download-url" | \
-            jq -r '.data')
-          echo "Downloading server pack from: ${DOWNLOAD_URL}"
-          curl -L -o /tmp/serverpack.zip "${DOWNLOAD_URL}"
-          echo "Extracting to /data..."
-          cd /data && unzip -o /tmp/serverpack.zip
-          rm /tmp/serverpack.zip
-          echo "Done"
+          import os, sys, json, zipfile
+          from urllib.request import Request, urlopen
+
+          CF_API_KEY = os.environ['CF_API_KEY']
+          DATA_DIR = '/data'
+
+          mods_dir = os.path.join(DATA_DIR, 'mods')
+          if os.path.isdir(mods_dir) and os.listdir(mods_dir):
+              print('Modpack already installed, skipping')
+              sys.exit(0)
+
+          print('Fetching download URL...')
+          req = Request(
+              'https://api.curseforge.com/v1/mods/1082278/files/7488393/download-url',
+              headers={'x-api-key': CF_API_KEY}
+          )
+          with urlopen(req) as r:
+              url = json.loads(r.read().decode())['data']
+          print(f'Downloading from: {url}')
+
+          zip_path = '/tmp/serverpack.zip'
+          with urlopen(url) as r, open(zip_path, 'wb') as f:
+              downloaded = 0
+              while chunk := r.read(131072):
+                  f.write(chunk)
+                  downloaded += len(chunk)
+                  if downloaded % (100 * 1024 * 1024) < 131072:
+                      print(f'{downloaded // (1024*1024)}MB downloaded...')
+
+          print('Extracting to /data...')
+          with zipfile.ZipFile(zip_path) as zf:
+              zf.extractall(DATA_DIR)
+          os.remove(zip_path)
+          print('Done!')
       env:
         - name: CF_API_KEY
           valueFrom:
