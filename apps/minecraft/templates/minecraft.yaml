@@ -1,0 +1,77 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minecraft
+  namespace: {{ .Release.Namespace }}
+spec:
+  serviceName: minecraft
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minecraft
+  template:
+    metadata:
+      labels:
+        app: minecraft
+    spec:
+      containers:
+        - name: minecraft
+          image: "{{ .Values.minecraft.image.repository }}:{{ .Values.minecraft.image.tag }}"
+          resources:
+            requests:
+              memory: "{{ .Values.minecraft.memory }}"
+            limits:
+              memory: "10Gi"
+          env:
+            - name: EULA
+              value: "TRUE"
+            - name: TYPE
+              value: "AUTO"
+            # Biohazard: Project Genesis server pack (Minecraft 1.20.1 / Forge)
+            - name: CF_PAGE_URL
+              value: "https://www.curseforge.com/minecraft/modpacks/biohazard-project-genesis/files/7488393"
+            - name: CF_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minecraft-secrets
+                  key: CF_API_KEY
+            - name: MEMORY
+              value: "{{ .Values.minecraft.memory }}"
+            - name: USE_AIKAR_FLAGS
+              value: "true"
+            - name: OVERRIDE_SERVER_PROPERTIES
+              value: "true"
+            - name: MOTD
+              value: "Biohazard: Project Genesis"
+          ports:
+            - name: minecraft
+              containerPort: 25565
+              protocol: TCP
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.minecraft.storage }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minecraft
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: {{ .Values.minecraft.service.type }}
+  selector:
+    app: minecraft
+  ports:
+    - name: minecraft
+      protocol: TCP
+      port: 25565
+      targetPort: 25565

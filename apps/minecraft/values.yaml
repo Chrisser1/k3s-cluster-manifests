@@ -1,0 +1,9 @@
+minecraft:
+  image:
+    repository: itzg/minecraft-server
+    tag: latest
+  # JVM heap size - the container memory limit should be ~2Gi higher than this
+  memory: "8G"
+  storage: 20Gi
+  service:
+    type: LoadBalancer
