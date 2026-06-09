@@ -7,8 +7,8 @@ minecraft:
     type: FORGE
     version: "1.20.1"
     serviceType: LoadBalancer
-    memory: 8192M
-    motd: "Biohazard: Project Genesis"
+    memory: 14Gi
+    motd: "DeceasedCraft"
     overrideServerProperties: true
     rcon:
       enabled: true
@@ -16,9 +16,9 @@ minecraft:
 
   resources:
     requests:
-      memory: 8Gi
+      memory: 14Gi
     limits:
-      memory: 10Gi
+      memory: 16Gi
 
   persistence:
     dataDir:
@@ -34,10 +34,11 @@ minecraft:
       command: ["python3", "-c"]
       args:
         - |
-          import os, sys, json, zipfile
+          import os, sys, json, zipfile, re
           from urllib.request import Request, urlopen
 
           CF_API_KEY = os.environ['CF_API_KEY']
+          MODPACK_URL = os.environ['MODPACK_URL']
           DATA_DIR = '/data'
 
           mods_dir = os.path.join(DATA_DIR, 'mods')
@@ -45,13 +46,29 @@ minecraft:
               print('Modpack already installed, skipping')
               sys.exit(0)
 
+          match = re.search(r'curseforge\.com/minecraft/modpacks/([^/]+)/download/(\d+)', MODPACK_URL)
+          if not match:
+              print(f'ERROR: Cannot parse CurseForge URL: {MODPACK_URL}')
+              sys.exit(1)
+          slug, file_id = match.group(1), match.group(2)
+          print(f'Modpack: {slug}, file: {file_id}')
+
+          def cf_get(path):
+              req = Request(f'https://api.curseforge.com{path}', headers={'x-api-key': CF_API_KEY})
+              with urlopen(req) as r:
+                  return json.loads(r.read().decode())
+
+          print('Looking up mod ID...')
+          result = cf_get(f'/v1/mods/search?gameId=432&slug={slug}')
+          mods = result.get('data', [])
+          if not mods:
+              print(f'ERROR: No mod found for slug: {slug}')
+              sys.exit(1)
+          mod_id = mods[0]['id']
+          print(f'Mod ID: {mod_id}')
+
           print('Fetching download URL...')
-          req = Request(
-              'https://api.curseforge.com/v1/mods/1082278/files/7488393/download-url',
-              headers={'x-api-key': CF_API_KEY}
-          )
-          with urlopen(req) as r:
-              url = json.loads(r.read().decode())['data']
+          url = cf_get(f'/v1/mods/{mod_id}/files/{file_id}/download-url')['data']
           print(f'Downloading from: {url}')
 
           zip_path = '/tmp/serverpack.zip'
@@ -74,6 +91,8 @@ minecraft:
             secretKeyRef:
               name: minecraft-secrets
               key: CF_API_KEY
+        - name: MODPACK_URL
+          value: "https://www.curseforge.com/minecraft/modpacks/deceasedcraft/download/7623184"
       volumeMounts:
         - name: datadir
           mountPath: /data
