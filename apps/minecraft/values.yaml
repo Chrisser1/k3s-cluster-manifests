@@ -7,7 +7,7 @@ minecraft:
     type: FORGE
     version: "1.20.1"
     serviceType: LoadBalancer
-    memory: 14Gi
+    memory: 14336M
     motd: "DeceasedCraft"
     overrideServerProperties: true
     rcon:
