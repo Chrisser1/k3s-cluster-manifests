@@ -68,7 +68,11 @@ minecraft:
           print(f'Mod ID: {mod_id}')
 
           print('Fetching download URL...')
-          url = cf_get(f'/v1/mods/{mod_id}/files/{file_id}/download-url')['data']
+          file_info = cf_get(f'/v1/mods/{mod_id}/files/{file_id}')['data']
+          url = file_info.get('downloadUrl')
+          if not url:
+              print(f'ERROR: CurseForge did not provide a download URL for file {file_id} (author may have disabled API downloads)')
+              sys.exit(1)
           print(f'Downloading from: {url}')
 
           zip_path = '/tmp/serverpack.zip'
