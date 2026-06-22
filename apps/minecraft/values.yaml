@@ -110,7 +110,7 @@ minecraft:
               name: minecraft-secrets
               key: CF_API_KEY
         - name: MODPACK_URL
-          value: "https://www.curseforge.com/minecraft/modpacks/star-technology/download/8174581"
+          value: "https://mediafilez.forgecdn.net/files/8174/581/StarT%20Theta%201%20HF%203%20Server%20Files.zip"
       volumeMounts:
         - name: datadir
           mountPath: /data
