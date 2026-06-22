@@ -46,47 +46,37 @@ minecraft:
               print('Modpack already installed, skipping')
               sys.exit(0)
 
-          match = re.search(r'curseforge\.com/minecraft/modpacks/([^/]+)/download/(\d+)', MODPACK_URL)
-          if not match:
-              print(f'ERROR: Cannot parse CurseForge URL: {MODPACK_URL}')
-              sys.exit(1)
-          slug, file_id = match.group(1), match.group(2)
-          print(f'Modpack: {slug}, file: {file_id}')
+          cf_match = re.search(r'curseforge\.com/minecraft/modpacks/([^/]+)/download/(\d+)', MODPACK_URL)
+          if cf_match:
+              slug, file_id = cf_match.group(1), cf_match.group(2)
+              print(f'Modpack: {slug}, file: {file_id}')
 
-          def cf_get(path):
-              req = Request(f'https://api.curseforge.com{path}', headers={'x-api-key': CF_API_KEY})
-              with urlopen(req) as r:
-                  return json.loads(r.read().decode())
+              def cf_get(path):
+                  req = Request(f'https://api.curseforge.com{path}', headers={'x-api-key': CF_API_KEY})
+                  with urlopen(req) as r:
+                      return json.loads(r.read().decode())
 
-          print('Looking up mod ID...')
-          result = cf_get(f'/v1/mods/search?gameId=432&slug={slug}')
-          mods = result.get('data', [])
-          if not mods:
-              print(f'ERROR: No mod found for slug: {slug}')
-              sys.exit(1)
-          mod_id = mods[0]['id']
-          print(f'Mod ID: {mod_id}')
+              print('Looking up mod ID...')
+              result = cf_get(f'/v1/mods/search?gameId=432&slug={slug}')
+              mods = result.get('data', [])
+              if not mods:
+                  print(f'ERROR: No mod found for slug: {slug}')
+                  sys.exit(1)
+              mod_id = mods[0]['id']
+              print(f'Mod ID: {mod_id}')
 
-          print('Fetching file list...')
-          files = cf_get(f'/v1/mods/{mod_id}/files?pageSize=50')['data']
-          print(f'Available files: {[(f["id"], f["fileName"]) for f in files[:10]]}')
-          match_file = next((f for f in files if f['id'] == int(file_id)), None)
-          if match_file:
+              print('Fetching file list...')
+              files = cf_get(f'/v1/mods/{mod_id}/files?pageSize=50')['data']
+              match_file = next((f for f in files if f['id'] == int(file_id)), None)
+              if not match_file:
+                  print(f'ERROR: File {file_id} not found for mod {mod_id}')
+                  sys.exit(1)
               url = match_file.get('downloadUrl')
               if not url:
                   print(f'ERROR: No downloadUrl for file {file_id} (author disabled API downloads)')
                   sys.exit(1)
           else:
-              server_files = [f for f in files if 'server' in f['fileName'].lower()]
-              if not server_files:
-                  print(f'ERROR: File {file_id} not found and no server pack files available')
-                  sys.exit(1)
-              match_file = server_files[0]
-              url = match_file.get('downloadUrl')
-              print(f'File {file_id} not found, using latest server pack: {match_file["id"]} - {match_file["fileName"]}')
-              if not url:
-                  print(f'ERROR: No downloadUrl for file {match_file["id"]}')
-                  sys.exit(1)
+              url = MODPACK_URL
           print(f'Downloading from: {url}')
 
           zip_path = '/tmp/serverpack.zip'
