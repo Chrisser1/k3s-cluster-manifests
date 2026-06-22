@@ -8,7 +8,7 @@ minecraft:
     version: "1.20.1"
     serviceType: LoadBalancer
     memory: 14336M
-    motd: "DeceasedCraft"
+    motd: "star-technology"
     overrideServerProperties: true
     rcon:
       enabled: true
@@ -92,7 +92,7 @@ minecraft:
               name: minecraft-secrets
               key: CF_API_KEY
         - name: MODPACK_URL
-          value: "https://www.curseforge.com/minecraft/modpacks/deceasedcraft/download/7623184"
+          value: "https://www.curseforge.com/minecraft/modpacks/star-technology/download/8174581"
       volumeMounts:
         - name: datadir
           mountPath: /data

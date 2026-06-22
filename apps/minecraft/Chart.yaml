@@ -1,6 +1,6 @@
 apiVersion: v2
 name: minecraft
-description: Helm chart for Biohazard Project Genesis Minecraft server
+description: Helm chart for Minecraft server
 type: application
 version: 0.1.0
 dependencies:
