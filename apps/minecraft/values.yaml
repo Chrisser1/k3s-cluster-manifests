@@ -34,10 +34,9 @@ minecraft:
       command: ["python3", "-c"]
       args:
         - |
-          import os, sys, json, zipfile, re
-          from urllib.request import Request, urlopen
+          import os, sys, zipfile, subprocess
+          from urllib.request import urlopen
 
-          CF_API_KEY = os.environ['CF_API_KEY']
           MODPACK_URL = os.environ['MODPACK_URL']
           DATA_DIR = '/data'
 
@@ -46,41 +45,9 @@ minecraft:
               print('Modpack already installed, skipping')
               sys.exit(0)
 
-          cf_match = re.search(r'curseforge\.com/minecraft/modpacks/([^/]+)/download/(\d+)', MODPACK_URL)
-          if cf_match:
-              slug, file_id = cf_match.group(1), cf_match.group(2)
-              print(f'Modpack: {slug}, file: {file_id}')
-
-              def cf_get(path):
-                  req = Request(f'https://api.curseforge.com{path}', headers={'x-api-key': CF_API_KEY})
-                  with urlopen(req) as r:
-                      return json.loads(r.read().decode())
-
-              print('Looking up mod ID...')
-              result = cf_get(f'/v1/mods/search?gameId=432&slug={slug}')
-              mods = result.get('data', [])
-              if not mods:
-                  print(f'ERROR: No mod found for slug: {slug}')
-                  sys.exit(1)
-              mod_id = mods[0]['id']
-              print(f'Mod ID: {mod_id}')
-
-              print('Fetching file list...')
-              files = cf_get(f'/v1/mods/{mod_id}/files?pageSize=50')['data']
-              match_file = next((f for f in files if f['id'] == int(file_id)), None)
-              if not match_file:
-                  print(f'ERROR: File {file_id} not found for mod {mod_id}')
-                  sys.exit(1)
-              url = match_file.get('downloadUrl')
-              if not url:
-                  print(f'ERROR: No downloadUrl for file {file_id} (author disabled API downloads)')
-                  sys.exit(1)
-          else:
-              url = MODPACK_URL
-          print(f'Downloading from: {url}')
-
           zip_path = '/tmp/serverpack.zip'
-          with urlopen(url) as r, open(zip_path, 'wb') as f:
+          print(f'Downloading from: {MODPACK_URL}')
+          with urlopen(MODPACK_URL) as r, open(zip_path, 'wb') as f:
               downloaded = 0
               while chunk := r.read(131072):
                   f.write(chunk)
@@ -92,13 +59,15 @@ minecraft:
           with zipfile.ZipFile(zip_path) as zf:
               zf.extractall(DATA_DIR)
           os.remove(zip_path)
+
+          setup_sh = os.path.join(DATA_DIR, 'setup.sh')
+          if os.path.exists(setup_sh):
+              print('Running setup.sh...')
+              os.chmod(setup_sh, 0o755)
+              subprocess.run(['sh', setup_sh], cwd=DATA_DIR, check=True)
+
           print('Done!')
       env:
-        - name: CF_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: minecraft-secrets
-              key: CF_API_KEY
         - name: MODPACK_URL
           value: "https://mediafilez.forgecdn.net/files/8174/581/StarT%20Theta%201%20HF%203%20Server%20Files.zip"
       volumeMounts:
