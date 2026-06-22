@@ -14,6 +14,11 @@ minecraft:
       enabled: true
       password: "changeme123"
 
+  startupProbe:
+    enabled: true
+    failureThreshold: 30
+    periodSeconds: 10
+
   resources:
     requests:
       memory: 14Gi
@@ -59,13 +64,6 @@ minecraft:
           with zipfile.ZipFile(zip_path) as zf:
               zf.extractall(DATA_DIR)
           os.remove(zip_path)
-
-          print('Running run.sh from: ' + DATA_DIR)
-          run_sh = os.path.join(DATA_DIR, 'run.sh')
-          if os.path.exists(run_sh):
-              print('Running run.sh...')
-              os.chmod(run_sh, 0o755)
-              subprocess.run(['sh', run_sh], cwd=DATA_DIR, check=True)
 
           print('Done!')
       env:
