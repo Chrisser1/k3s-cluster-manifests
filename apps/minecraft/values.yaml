@@ -60,11 +60,11 @@ minecraft:
               zf.extractall(DATA_DIR)
           os.remove(zip_path)
 
-          setup_sh = os.path.join(DATA_DIR, 'setup.sh')
-          if os.path.exists(setup_sh):
-              print('Running setup.sh...')
-              os.chmod(setup_sh, 0o755)
-              subprocess.run(['sh', setup_sh], cwd=DATA_DIR, check=True)
+          run_sh = os.path.join(DATA_DIR, 'run.sh')
+          if os.path.exists(run_sh):
+              print('Running run.sh...')
+              os.chmod(run_sh, 0o755)
+              subprocess.run(['sh', run_sh], cwd=DATA_DIR, check=True)
 
           print('Done!')
       env:
