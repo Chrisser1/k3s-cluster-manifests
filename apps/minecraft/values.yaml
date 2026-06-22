@@ -67,12 +67,26 @@ minecraft:
           mod_id = mods[0]['id']
           print(f'Mod ID: {mod_id}')
 
-          print('Fetching download URL...')
-          file_info = cf_get(f'/v1/mods/{mod_id}/files/{file_id}')['data']
-          url = file_info.get('downloadUrl')
-          if not url:
-              print(f'ERROR: CurseForge did not provide a download URL for file {file_id} (author may have disabled API downloads)')
-              sys.exit(1)
+          print('Fetching file list...')
+          files = cf_get(f'/v1/mods/{mod_id}/files?pageSize=50')['data']
+          print(f'Available files: {[(f["id"], f["fileName"]) for f in files[:10]]}')
+          match_file = next((f for f in files if f['id'] == int(file_id)), None)
+          if match_file:
+              url = match_file.get('downloadUrl')
+              if not url:
+                  print(f'ERROR: No downloadUrl for file {file_id} (author disabled API downloads)')
+                  sys.exit(1)
+          else:
+              server_files = [f for f in files if 'server' in f['fileName'].lower()]
+              if not server_files:
+                  print(f'ERROR: File {file_id} not found and no server pack files available')
+                  sys.exit(1)
+              match_file = server_files[0]
+              url = match_file.get('downloadUrl')
+              print(f'File {file_id} not found, using latest server pack: {match_file["id"]} - {match_file["fileName"]}')
+              if not url:
+                  print(f'ERROR: No downloadUrl for file {match_file["id"]}')
+                  sys.exit(1)
           print(f'Downloading from: {url}')
 
           zip_path = '/tmp/serverpack.zip'
