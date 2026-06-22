@@ -9,7 +9,7 @@ minecraft:
     serviceType: LoadBalancer
     memory: 14336M
     motd: "star-technology"
-    overrideServerProperties: true
+    overrideServerProperties: false
     rcon:
       enabled: true
       password: "changeme123"
