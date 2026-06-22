@@ -60,6 +60,7 @@ minecraft:
               zf.extractall(DATA_DIR)
           os.remove(zip_path)
 
+          print('Running run.sh from: ' + DATA_DIR)
           run_sh = os.path.join(DATA_DIR, 'run.sh')
           if os.path.exists(run_sh):
               print('Running run.sh...')
