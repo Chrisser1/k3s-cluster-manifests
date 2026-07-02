@@ -1,2 +1,2 @@
-storage: 10Gi
+storage: 5Gi
 nodePort: 30500

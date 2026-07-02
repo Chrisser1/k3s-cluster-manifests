@@ -76,59 +76,17 @@ The self-hosted runner on the oracle node handles all builds. It is registered v
 
 ## Storage (Longhorn)
 
-The cluster uses [Longhorn](https://longhorn.io) for distributed block storage. It is deployed via `argocd-apps/longhorn.yaml` and is the default storage class — new PVCs automatically use it. All apps were migrated off `local-path` in July 2026; `local-storage` is disabled in the k3s config.
+The cluster uses [Longhorn](https://longhorn.io) for distributed block storage. It is deployed via `argocd-apps/longhorn.yaml` and is the default storage class, new PVCs automatically use it.
 
 Key settings (in `argocd-apps/longhorn.yaml`):
-- `preUpgradeChecker.jobEnabled: false` — required for ArgoCD (the hook needs a service account that doesn't exist until the chart installs; chicken-and-egg)
-- `persistence.defaultClassReplicaCount: 1` — single-node cluster; bump when more nodes join
-- `storageOverProvisioningPercentage: 200` — volumes are thin-provisioned; the oracle disk is smaller than the sum of PVC sizes, so watch actual usage in the Longhorn UI
-
-The NixOS side needs `services.openiscsi` enabled and a `/usr/local/bin → /run/current-system/sw/bin` symlink on every node (Longhorn nsenters into the host and expects `iscsiadm` on an FHS path) — see `modules/features/kubernetes/` in the nixos repo.
+- `preUpgradeChecker.jobEnabled: false`: required for ArgoCD
+- `persistence.defaultClassReplicaCount: 1`: single-node cluster; bump when more nodes join
+- `storageOverProvisioningPercentage: 200`: volumes are thin-provisioned; the oracle disk is smaller than the sum of PVC sizes, so watch actual usage in the Longhorn UI
 
 Longhorn UI (no auth, don't expose):
 
 ```bash
 kubectl -n longhorn-system port-forward svc/longhorn-frontend 8080:80
-```
-
-### Backup / restore a PVC via the PC
-
-Used for the local-path → Longhorn migration; works for any PVC move or disaster recovery.
-
-```bash
-# 1. Pause ArgoCD auto-sync — ROOT APP FIRST, otherwise the app-of-apps
-#    reverts the child patches and selfHeal scales pods right back up
-kubectl patch application apps -n argocd --type merge -p '{"spec":{"syncPolicy":{"automated":null}}}'
-kubectl patch application <appname> -n argocd --type merge -p '{"spec":{"syncPolicy":{"automated":null}}}'
-
-# 2. Scale down so the data is quiescent (critical for postgres)
-kubectl scale deployment <deployment> -n <namespace> --replicas=0
-
-# 3. Pull the data to the PC
-#    - local-path PVs: rsync the dir shown by
-#      kubectl get pv -o custom-columns=NAME:.metadata.name,PATH:.spec.local.path,CLAIM:.spec.claimRef.name
-#    - Longhorn PVs: mount the PVC in a temp pod (see step 5) and
-#      kubectl exec ... tar czf - -C /data . > backup.tar.gz
-rsync -avz oracle-server:<pv-path>/ ~/cluster-backup/<app>/
-
-# 4. Delete the old PVC and create the replacement (same name, same size,
-#    storageClassName: longhorn) while sync is still paused
-
-# 5. Restore: run a temp pod mounting the new PVC...
-#    (image: alpine, command: ["sleep","infinity"], volumeMounts /data)
-#    ...then stream the data in:
-tar czf - -C ~/cluster-backup/<app> . | kubectl exec -i -n <namespace> restore -- tar xzf - -C /data
-
-# 5b. rsync does NOT preserve ownership when run as a normal user — fix uids
-#     for apps that don't run as uid 1000. postgres:16-alpine is uid 70:
-kubectl exec -n <namespace> restore -- chown -R 70:70 /data
-
-# 6. Delete the temp pod, scale up, VERIFY the app works
-kubectl scale deployment <deployment> -n <namespace> --replicas=1
-
-# 7. Re-enable sync — children first, root app last
-kubectl patch application <appname> -n argocd --type merge -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
-kubectl patch application apps -n argocd --type merge -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
 ```
 
 ## Moving a workload to a new node
@@ -140,31 +98,37 @@ This is the workflow for migrating e.g. the Minecraft server to a dedicated node
 - New node is joined to the cluster (via the `kubernetes-agent` NixOS module)
 - Longhorn is installed and the node appears in the Longhorn UI (`kubectl -n longhorn-system port-forward svc/longhorn-frontend 8080:80`)
 
+Pod placement and data placement are separate controls: the deployment's `nodeSelector` says where the pod runs, the Longhorn volume's node selector (via node tags) says where the data lives. For local disk speed, point both at the same node. The order below matters, the volume node selector is set *before* adding the replica, so with several candidate nodes the new replica can only land on the target.
+
 ### Steps
 
-**1. Tag nodes in Longhorn**
+**1. Tag the target node in Longhorn**
 
-In the Longhorn UI → Node, add a tag to the new node (e.g. `minecraft`) and a tag to oracle (e.g. `oracle`).
+Longhorn UI → Node → target node → add a unique tag (e.g. `minecraft`). Only the target node gets this tag, that's what makes the placement precise when there are multiple nodes.
 
-**2. Scale replicas to 2 on the volume**
+**2. Set the volume's node selector to the tag**
 
-In the Longhorn UI → Volume, find the volume for the workload and set replica count to 2. Longhorn will start syncing to the new node. Wait until both replicas show `Healthy`.
+Longhorn UI → Volume → the workload's volume → Update Node Selector → the tag from step 1. The existing replica now violates the selector; Longhorn keeps it, but any *new* replica must land on the tagged node.
 
-**3. Pin the volume to the new node**
+**3. Scale replicas to 2**
 
-Once sync is complete, update the volume's node selector to only the new node's tag, then scale replicas back to 1. Longhorn removes the oracle replica automatically.
+On the same volume, set replica count to 2. The new replica's only legal home is the target node, so it syncs there. Wait until both replicas show `Healthy`.
 
-**4. Move the pod**
+**4. Scale replicas back to 1**
+
+Longhorn removes the replica that violates the node selector — the old one — leaving the data solely on the target node.
+
+**5. Move the pod**
 
 Add a `nodeSelector` to the app's `values.yaml`:
 
 ```yaml
 nodeSelector:
-  kubernetes.io/hostname: <new-node-name>
+  kubernetes.io/hostname: <target-node-name>
 ```
 
-Commit and push — ArgoCD syncs the deployment and the pod restarts on the new node with local data access.
+Commit and push, ArgoCD syncs the deployment and the pod restarts on the target node with local data access.
 
-**5. Verify**
+**6. Verify**
 
-Confirm the pod is Running on the new node and data is intact, then the oracle replica is already gone (removed in step 3).
+Pod is Running on the target node, data is intact, and the volume shows a single `Healthy` replica on the target node.
