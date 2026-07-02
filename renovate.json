@@ -23,15 +23,16 @@
       "automerge": true
     },
     {
-      "description": "Docker: Automerge minor and patch updates",
+      "description": "Docker: Automerge minor and patch updates (excludes gymbros, managed by CI)",
       "matchDatasources": ["docker"],
       "matchUpdateTypes": ["minor", "patch"],
+      "matchPackageNames": ["!gymbros-backend", "!gymbros-frontend"],
       "automerge": true
     },
     {
       "description": "Traefik: Update on Monday",
       "matchPackageNames": ["traefik"],
-      "schedule": ["before 5am on monday"] 
+      "schedule": ["before 5am on monday"]
     }
   ]
 }
