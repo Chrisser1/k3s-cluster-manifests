@@ -26,6 +26,7 @@ minecraft:
       memory: 16Gi
 
   persistence:
+    storageClass: longhorn
     dataDir:
       enabled: true
       Size: 20Gi
