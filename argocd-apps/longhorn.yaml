@@ -15,6 +15,7 @@ spec:
           jobEnabled: false
         defaultSettings:
           defaultReplicaCount: 1
+          storageOverProvisioningPercentage: 200
         persistence:
           defaultClassIsDefault: true
           defaultClassReplicaCount: 1
