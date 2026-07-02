@@ -26,9 +26,12 @@ minecraft:
       memory: 16Gi
 
   persistence:
-    storageClass: longhorn
     dataDir:
       enabled: true
+      # PVC is managed outside the chart (created during the Longhorn
+      # migration); the chart's own PVC template renders a legacy
+      # storage-class annotation that conflicts with the live object.
+      existingClaim: minecraft-datadir
       Size: 20Gi
 
   initContainers:
