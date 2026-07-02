@@ -76,128 +76,59 @@ The self-hosted runner on the oracle node handles all builds. It is registered v
 
 ## Storage (Longhorn)
 
-The cluster uses [Longhorn](https://longhorn.io) for distributed block storage. It is deployed via `argocd-apps/longhorn.yaml` and is the default storage class, new PVCs automatically use it.
+The cluster uses [Longhorn](https://longhorn.io) for distributed block storage. It is deployed via `argocd-apps/longhorn.yaml` and is the default storage class — new PVCs automatically use it. All apps were migrated off `local-path` in July 2026; `local-storage` is disabled in the k3s config.
 
-### After first install
+Key settings (in `argocd-apps/longhorn.yaml`):
+- `preUpgradeChecker.jobEnabled: false` — required for ArgoCD (the hook needs a service account that doesn't exist until the chart installs; chicken-and-egg)
+- `persistence.defaultClassReplicaCount: 1` — single-node cluster; bump when more nodes join
+- `storageOverProvisioningPercentage: 200` — volumes are thin-provisioned; the oracle disk is smaller than the sum of PVC sizes, so watch actual usage in the Longhorn UI
 
-Once Longhorn is Running, demote `local-path` so it is no longer the default:
+The NixOS side needs `services.openiscsi` enabled and a `/usr/local/bin → /run/current-system/sw/bin` symlink on every node (Longhorn nsenters into the host and expects `iscsiadm` on an FHS path) — see `modules/features/kubernetes/` in the nixos repo.
+
+Longhorn UI (no auth, don't expose):
 
 ```bash
-kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
+kubectl -n longhorn-system port-forward svc/longhorn-frontend 8080:80
 ```
 
-### Migrating an existing PVC from local-path to Longhorn
+### Backup / restore a PVC via the PC
 
-Do this once per app after Longhorn is installed (gymbros-db, minecraft, registry all started on local-path).
+Used for the local-path → Longhorn migration; works for any PVC move or disaster recovery.
 
 ```bash
-# 1. Pause ArgoCD auto-sync for the app
+# 1. Pause ArgoCD auto-sync — ROOT APP FIRST, otherwise the app-of-apps
+#    reverts the child patches and selfHeal scales pods right back up
+kubectl patch application apps -n argocd --type merge -p '{"spec":{"syncPolicy":{"automated":null}}}'
 kubectl patch application <appname> -n argocd --type merge -p '{"spec":{"syncPolicy":{"automated":null}}}'
 
-# 2. Scale down the workload
+# 2. Scale down so the data is quiescent (critical for postgres)
 kubectl scale deployment <deployment> -n <namespace> --replicas=0
 
-# 3. Create a new Longhorn PVC
-kubectl apply -f - <<EOF
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: <pvc-name>-longhorn
-  namespace: <namespace>
-spec:
-  accessModes: [ReadWriteOnce]
-  storageClassName: longhorn
-  resources:
-    requests:
-      storage: <size>
-EOF
+# 3. Pull the data to the PC
+#    - local-path PVs: rsync the dir shown by
+#      kubectl get pv -o custom-columns=NAME:.metadata.name,PATH:.spec.local.path,CLAIM:.spec.claimRef.name
+#    - Longhorn PVs: mount the PVC in a temp pod (see step 5) and
+#      kubectl exec ... tar czf - -C /data . > backup.tar.gz
+rsync -avz oracle-server:<pv-path>/ ~/cluster-backup/<app>/
 
-# 4. Copy data from old PVC to the temp Longhorn PVC
-kubectl apply -f - <<EOF
-apiVersion: v1
-kind: Pod
-metadata:
-  name: migrate
-  namespace: <namespace>
-spec:
-  restartPolicy: Never
-  containers:
-  - name: migrate
-    image: alpine
-    command: ["sh", "-c", "cp -av /source/. /dest/ && echo DONE"]
-    volumeMounts:
-    - name: source
-      mountPath: /source
-    - name: dest
-      mountPath: /dest
-  volumes:
-  - name: source
-    persistentVolumeClaim:
-      claimName: <pvc-name>
-  - name: dest
-    persistentVolumeClaim:
-      claimName: <pvc-name>-longhorn
-EOF
+# 4. Delete the old PVC and create the replacement (same name, same size,
+#    storageClassName: longhorn) while sync is still paused
 
-kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/migrate -n <namespace> --timeout=600s
-kubectl logs migrate -n <namespace> | tail -3   # verify it printed DONE
-kubectl delete pod migrate -n <namespace>
+# 5. Restore: run a temp pod mounting the new PVC...
+#    (image: alpine, command: ["sleep","infinity"], volumeMounts /data)
+#    ...then stream the data in:
+tar czf - -C ~/cluster-backup/<app> . | kubectl exec -i -n <namespace> restore -- tar xzf - -C /data
 
-# 5. Recreate the original PVC on Longhorn and copy the data back into it.
-#    (The temp PVC holds the only copy of the data at this point — do NOT
-#    delete it until the second copy has succeeded.)
-kubectl delete pvc <pvc-name> -n <namespace>
-kubectl apply -f - <<EOF
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: <pvc-name>
-  namespace: <namespace>
-spec:
-  accessModes: [ReadWriteOnce]
-  storageClassName: longhorn
-  resources:
-    requests:
-      storage: <size>
-EOF
+# 5b. rsync does NOT preserve ownership when run as a normal user — fix uids
+#     for apps that don't run as uid 1000. postgres:16-alpine is uid 70:
+kubectl exec -n <namespace> restore -- chown -R 70:70 /data
 
-# Same migrate pod as step 4, but with source/dest swapped:
-kubectl apply -f - <<EOF
-apiVersion: v1
-kind: Pod
-metadata:
-  name: migrate-back
-  namespace: <namespace>
-spec:
-  restartPolicy: Never
-  containers:
-  - name: migrate
-    image: alpine
-    command: ["sh", "-c", "cp -av /source/. /dest/ && echo DONE"]
-    volumeMounts:
-    - name: source
-      mountPath: /source
-    - name: dest
-      mountPath: /dest
-  volumes:
-  - name: source
-    persistentVolumeClaim:
-      claimName: <pvc-name>-longhorn
-  - name: dest
-    persistentVolumeClaim:
-      claimName: <pvc-name>
-EOF
-
-kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/migrate-back -n <namespace> --timeout=600s
-kubectl logs migrate-back -n <namespace> | tail -3   # verify DONE
-kubectl delete pod migrate-back -n <namespace>
-
-# 6. Scale back up and VERIFY the app works before cleaning up
+# 6. Delete the temp pod, scale up, VERIFY the app works
 kubectl scale deployment <deployment> -n <namespace> --replicas=1
 
-# 7. Once the app is confirmed working, delete the temp PVC and re-enable sync
-kubectl delete pvc <pvc-name>-longhorn -n <namespace>
+# 7. Re-enable sync — children first, root app last
 kubectl patch application <appname> -n argocd --type merge -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
+kubectl patch application apps -n argocd --type merge -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
 ```
 
 ## Moving a workload to a new node
