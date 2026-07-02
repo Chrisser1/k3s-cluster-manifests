@@ -17,7 +17,7 @@ spec:
           defaultReplicaCount: 1
         persistence:
           defaultClassIsDefault: true
-          defaultReplicaCount: 1
+          defaultClassReplicaCount: 1
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: longhorn-system

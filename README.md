@@ -112,7 +112,7 @@ spec:
       storage: <size>
 EOF
 
-# 4. Copy data from old PVC to new
+# 4. Copy data from old PVC to the temp Longhorn PVC
 kubectl apply -f - <<EOF
 apiVersion: v1
 kind: Pod
@@ -139,10 +139,13 @@ spec:
       claimName: <pvc-name>-longhorn
 EOF
 
-kubectl wait --for=condition=complete pod/migrate -n <namespace> --timeout=300s
+kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/migrate -n <namespace> --timeout=600s
+kubectl logs migrate -n <namespace> | tail -3   # verify it printed DONE
 kubectl delete pod migrate -n <namespace>
 
-# 5. Delete old PVC and rename new one
+# 5. Recreate the original PVC on Longhorn and copy the data back into it.
+#    (The temp PVC holds the only copy of the data at this point — do NOT
+#    delete it until the second copy has succeeded.)
 kubectl delete pvc <pvc-name> -n <namespace>
 kubectl apply -f - <<EOF
 apiVersion: v1
@@ -157,10 +160,43 @@ spec:
     requests:
       storage: <size>
 EOF
-kubectl delete pvc <pvc-name>-longhorn -n <namespace>
 
-# 6. Scale back up and re-enable ArgoCD sync
+# Same migrate pod as step 4, but with source/dest swapped:
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: migrate-back
+  namespace: <namespace>
+spec:
+  restartPolicy: Never
+  containers:
+  - name: migrate
+    image: alpine
+    command: ["sh", "-c", "cp -av /source/. /dest/ && echo DONE"]
+    volumeMounts:
+    - name: source
+      mountPath: /source
+    - name: dest
+      mountPath: /dest
+  volumes:
+  - name: source
+    persistentVolumeClaim:
+      claimName: <pvc-name>-longhorn
+  - name: dest
+    persistentVolumeClaim:
+      claimName: <pvc-name>
+EOF
+
+kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/migrate-back -n <namespace> --timeout=600s
+kubectl logs migrate-back -n <namespace> | tail -3   # verify DONE
+kubectl delete pod migrate-back -n <namespace>
+
+# 6. Scale back up and VERIFY the app works before cleaning up
 kubectl scale deployment <deployment> -n <namespace> --replicas=1
+
+# 7. Once the app is confirmed working, delete the temp PVC and re-enable sync
+kubectl delete pvc <pvc-name>-longhorn -n <namespace>
 kubectl patch application <appname> -n argocd --type merge -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
 ```
 
