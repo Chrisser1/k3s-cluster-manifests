@@ -11,6 +11,8 @@ spec:
     targetRevision: v1.12.0
     helm:
       values: |
+        preUpgradeChecker:
+          jobEnabled: false
         defaultSettings:
           defaultReplicaCount: 1
         persistence:
