@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/Chrisser1/k3s-cluster-manifests.git'
+    repoURL: 'https://github.com/Clusterforgers/k3s-cluster-manifests.git'
     targetRevision: HEAD
     path: argocd-apps
   destination:
