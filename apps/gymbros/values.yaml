@@ -1,13 +1,13 @@
 backend:
   image:
     repository: 100.81.239.16:30500/gymbros-backend
-    tag: v1.4.4
+    tag: v1.4.8
   replicas: 1
 
 frontend:
   image:
     repository: 100.81.239.16:30500/gymbros-frontend
-    tag: v1.4.4
+    tag: v1.4.8
   replicas: 1
 
 database:
