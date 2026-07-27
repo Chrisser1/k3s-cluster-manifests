@@ -36,23 +36,23 @@ nextcloud:
     limits:
       memory: 16Gi
 
-mariadb:
-  enabled: true
-  auth:
-    database: nextcloud
-    username: nextcloud
-    existingSecret: nextcloud-db-credentials
-  primary:
-    persistence:
-      enabled: true
-      storageClass: longhorn-queen-bulk
-      size: 5Gi
+  mariadb:
+    enabled: true
+    auth:
+      database: nextcloud
+      username: nextcloud
+      existingSecret: nextcloud-db-credentials
+    primary:
+      persistence:
+        enabled: true
+        storageClass: longhorn-queen-bulk
+        size: 5Gi
 
-persistence:
-  enabled: true
-  storageClass: longhorn-queen-bulk
-  size: 3Ti
+  persistence:
+    enabled: true
+    storageClass: longhorn-queen-bulk
+    size: 3Ti
 
-service:
-  type: LoadBalancer
-  port: 80
+  service:
+    type: LoadBalancer
+    port: 80
