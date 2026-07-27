@@ -1,4 +1,6 @@
 nextcloud:
+  replicaCount: 0
+
   host: hivemindcloud.dk
 
   existingSecret:
@@ -50,8 +52,6 @@ persistence:
   enabled: true
   storageClass: longhorn-queen-bulk
   size: 3Ti
-
-replicaCount: 0
 
 service:
   type: LoadBalancer
