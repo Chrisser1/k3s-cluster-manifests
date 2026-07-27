@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nextcloud
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/Clusterforgers/k3s-cluster-manifests.git'
+    targetRevision: HEAD
+    path: apps/nextcloud
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: nextcloud
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

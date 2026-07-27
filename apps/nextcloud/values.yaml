@@ -1,0 +1,58 @@
+nextcloud:
+  host: hivemindcloud.dk
+
+  existingSecret:
+    enabled: true
+    secretName: nextcloud-credentials
+    usernameKey: username
+    passwordKey: password
+
+  # Trust Tailscale and cluster-internal traffic for eventual reverse proxy
+  trustedProxies:
+    - 10.0.0.0/8
+    - 100.0.0.0/8
+
+  phpConfigs:
+    uploadLimit.ini: |
+      upload_max_filesize = 16G
+      post_max_size = 16G
+      max_input_time = 3600
+      max_execution_time = 3600
+
+  configs:
+    custom.config.php: |-
+      <?php
+      $CONFIG = array(
+        'default_phone_region' => 'DK',
+        'maintenance_window_start' => 2,
+      );
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 16Gi
+
+mariadb:
+  enabled: true
+  auth:
+    database: nextcloud
+    username: nextcloud
+    existingSecret: nextcloud-db-credentials
+  primary:
+    persistence:
+      enabled: true
+      storageClass: longhorn-queen-bulk
+      size: 5Gi
+
+persistence:
+  enabled: true
+  storageClass: longhorn-queen-bulk
+  size: 3Ti
+
+replicaCount: 0
+
+service:
+  type: LoadBalancer
+  port: 80
