@@ -18,6 +18,7 @@ spec:
             type: ClusterIP
           nodeSelector:
             kubernetes.io/hostname: queen
+          allowSnippetAnnotations: true
           config:
             use-forwarded-headers: "true"
             proxy-body-size: 16g
