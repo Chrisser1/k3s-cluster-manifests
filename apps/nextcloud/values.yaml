@@ -8,6 +8,8 @@ nextcloud:
       - hivemindcloud.dk
       - localhost
       - 10.42.*.*
+      - 100.94.156.45
+      - 100.96.184.94
 
     existingSecret:
       enabled: true
