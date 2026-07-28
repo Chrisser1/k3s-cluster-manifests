@@ -76,5 +76,35 @@ nextcloud:
     size: 3Ti
 
   service:
-    type: LoadBalancer
+    type: ClusterIP
     port: 80
+
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      nginx.ingress.kubernetes.io/proxy-body-size: 16g
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+      nginx.ingress.kubernetes.io/server-snippet: |-
+        server_tokens off;
+        rewrite ^/.well-known/webfinger /index.php/.well-known/webfinger last;
+        rewrite ^/.well-known/nodeinfo /index.php/.well-known/nodeinfo last;
+        rewrite ^/.well-known/host-meta /public.php?service=host-meta last;
+        rewrite ^/.well-known/host-meta.json /public.php?service=host-meta-json;
+        location = /.well-known/carddav {
+          return 301 $scheme://$host/remote.php/dav;
+        }
+        location = /.well-known/caldav {
+          return 301 $scheme://$host/remote.php/dav;
+        }
+    hosts:
+      - host: hivemindcloud.dk
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: nextcloud-tls
+        hosts:
+          - hivemindcloud.dk
