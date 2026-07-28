@@ -4,11 +4,11 @@ nextcloud:
   nodeSelector:
     kubernetes.io/hostname: queen
 
-  podSecurityContext:
-    fsGroupChangePolicy: OnRootMismatch
-
   nextcloud:
     host: hivemindcloud.dk
+    podSecurityContext:
+      fsGroup: 33
+      fsGroupChangePolicy: OnRootMismatch
 
     trustedDomains:
       - hivemindcloud.dk
