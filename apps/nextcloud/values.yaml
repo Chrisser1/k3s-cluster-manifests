@@ -1,6 +1,12 @@
 nextcloud:
   replicaCount: 1
 
+  nodeSelector:
+    kubernetes.io/hostname: queen
+
+  securityContext:
+    fsGroupChangePolicy: OnRootMismatch
+
   nextcloud:
     host: hivemindcloud.dk
 
