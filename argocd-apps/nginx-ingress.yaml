@@ -24,6 +24,8 @@ spec:
             proxy-body-size: 16g
             proxy-read-timeout: "3600"
             proxy-send-timeout: "3600"
+            allow-snippet-annotations: "true"
+            annotations-risk-level: Critical
   destination:
     server: https://kubernetes.default.svc
     namespace: ingress-nginx
