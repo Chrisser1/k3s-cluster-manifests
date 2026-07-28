@@ -3,6 +3,11 @@ nextcloud:
 
   host: hivemindcloud.dk
 
+  trustedDomains:
+    - hivemindcloud.dk
+    - localhost
+    - 10.42.*.*
+
   existingSecret:
     enabled: true
     secretName: nextcloud-credentials
