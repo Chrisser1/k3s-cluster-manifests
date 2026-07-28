@@ -36,6 +36,17 @@ nextcloud:
     limits:
       memory: 16Gi
 
+  externalDatabase:
+    enabled: true
+    type: mysql
+    host: nextcloud-mariadb
+    database: nextcloud
+    user: nextcloud
+    existingSecret:
+      enabled: true
+      secretName: nextcloud-db-credentials
+      passwordKey: mariadb-password
+
   mariadb:
     enabled: true
     auth:
