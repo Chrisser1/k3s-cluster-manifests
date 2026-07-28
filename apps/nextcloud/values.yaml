@@ -4,7 +4,7 @@ nextcloud:
   nodeSelector:
     kubernetes.io/hostname: queen
 
-  securityContext:
+  podSecurityContext:
     fsGroupChangePolicy: OnRootMismatch
 
   nextcloud:
