@@ -27,7 +27,7 @@ metadata:
   name: gymbros-frontend
   namespace: gymbros
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: gymbros-frontend
   ports:
@@ -35,3 +35,29 @@ spec:
       protocol: TCP
       port: 80
       targetPort: 80
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gymbros-frontend
+  namespace: gymbros
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: gymbros.hivemindcloud.dk
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gymbros-frontend
+                port:
+                  number: 80
+  tls:
+    - secretName: gymbros-tls
+      hosts:
+        - gymbros.hivemindcloud.dk
