@@ -65,14 +65,12 @@ Copy `.github/workflows/deploy.yml` from the GymBros repo as a starting point.
 
 | Name | Type | Value | Notes |
 |------|------|-------|-------|
-| `REGISTRY_HOST` | Variable | `100.81.239.16` | Tailscale IP of the control plane |
+| `REGISTRY_HOST` | Variable | `100.96.184.94` | Tailscale IP of the control plane |
 | `CLUSTER_MANIFESTS_TOKEN` | Secret | Classic PAT | Needs `repo` scope on `k3s-cluster-manifests`. |
 
 **GitHub Actions runner:**
 
-The self-hosted runner on the oracle node handles all builds. It is registered via `services.github-runners.gymbros` in the NixOS config using a **classic PAT** with `repo` scope stored in `secrets.nix` as `githubRunnerToken`. If adding a new application with a repo, then remember to edit the token to have access to that repository.
-
-> Fine-grained PATs cannot register GitHub Actions runners regardless of permissions, use a classic PAT.
+There's no self-hosted runner managed by this repo or the cluster's NixOS config anymore — builds reach the internal registry over Tailscale instead. Configure the runner in the app repo's own CI setup.
 
 ## Storage (Longhorn)
 
