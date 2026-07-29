@@ -34,6 +34,12 @@ nextcloud:
         max_input_time = 3600
         max_execution_time = 3600
 
+    defaultConfigs:
+      # We ship our own redis.config.php below. The chart mounts `configs` and
+      # `defaultConfigs` without deduping, and duplicate mountPaths are rejected
+      # on resource creation.
+      redis.config.php: false
+
     configs:
       custom.config.php: |-
         <?php
