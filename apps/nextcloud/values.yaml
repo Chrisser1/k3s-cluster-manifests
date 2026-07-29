@@ -97,6 +97,31 @@ nextcloud:
     storageClass: longhorn-queen-bulk
     size: 3Ti
 
+  cronjob:
+    enabled: true
+    # Native CronJob instead of the crond sidecar: the sidecar requires root.
+    # Inherits nodeSelector, so the job pod lands on queen and can mount the
+    # same RWO Longhorn volume as the app pod.
+    type: cronjob
+    cronjob:
+      schedule: "*/5 * * * *"
+      successfulJobsHistoryLimit: 3
+      failedJobsHistoryLimit: 5
+      # A wedged run must not outlive the next trigger
+      activeDeadlineSeconds: 280
+      # The chart overrides the image entrypoint, so nothing drops privileges
+      # for us: without this cron.php writes root-owned files into the data volume
+      securityContext:
+        runAsUser: 33
+        runAsGroup: 33
+        runAsNonRoot: true
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          memory: 2Gi
+
   service:
     type: ClusterIP
     port: 80
