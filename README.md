@@ -52,6 +52,8 @@ spec:
 
 Commit and push, ArgoCD will deploy it automatically.
 
+**If the app gets a `*.hivemindcloud.dk` Ingress host**, also add it to `apps/coredns-custom/values.yaml`. Internal cluster DNS for that whole zone is overridden (to point at the ingress ClusterIP instead of the public IP, avoiding hairpin NAT) — any hostname not explicitly listed there resolves fine externally but returns nothing inside the cluster. This silently breaks anything that resolves its own hostname from inside a pod, most notably cert-manager's HTTP-01 self-check, which will hang in `Issuing certificate as Secret does not exist` indefinitely with no error until the hostname is added and CoreDNS is restarted (`kubectl rollout restart deployment -n kube-system coredns`).
+
 ### 3. Set up CI/CD (if the app has its own GitHub repo)
 
 Add a `.github/workflows/deploy.yml` to the app repo that:

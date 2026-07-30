@@ -1,0 +1,13 @@
+# ClusterIP of the nginx-ingress-controller Service. All *.hivemindcloud.dk
+# hosts below resolve internally to this instead of the public IP, so
+# in-cluster traffic (cert-manager's HTTP-01 self-check, pods calling out
+# to their own public hostname, etc.) doesn't hairpin through the router.
+ingressClusterIP: 10.43.144.184
+
+# Every public *.hivemindcloud.dk hostname that's routed through the
+# ingress must be listed here, or it silently fails to resolve inside the
+# cluster (this whole zone is intercepted, there's no forward fallback).
+hosts:
+  - hivemindcloud.dk
+  - gymbros.hivemindcloud.dk
+  - office.hivemindcloud.dk
