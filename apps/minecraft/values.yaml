@@ -1,4 +1,7 @@
 minecraft:
+  nodeSelector:
+    kubernetes.io/hostname: bullet
+
   image:
     tag: java21
 
