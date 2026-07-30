@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: collabora
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/Clusterforgers/k3s-cluster-manifests.git'
+    targetRevision: HEAD
+    path: apps/collabora
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: collabora
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

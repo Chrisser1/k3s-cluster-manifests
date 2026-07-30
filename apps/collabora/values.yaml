@@ -1,0 +1,15 @@
+image:
+  repository: collabora/code
+  tag: latest
+
+host: office.hivemindcloud.dk
+
+# Regex-escaped hostname(s) collabora will accept WOPI requests from.
+wopiDomain: "hivemindcloud\\.dk"
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    memory: 2Gi

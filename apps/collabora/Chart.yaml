@@ -1,0 +1,5 @@
+apiVersion: v2
+name: collabora
+description: Collabora Online (CODE) server, used by Nextcloud richdocuments for WOPI document editing
+type: application
+version: 0.1.0

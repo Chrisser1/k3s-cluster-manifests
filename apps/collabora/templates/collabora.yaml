@@ -1,0 +1,91 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: collabora
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: collabora
+  namespace: collabora
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: collabora
+  template:
+    metadata:
+      labels:
+        app: collabora
+    spec:
+      containers:
+        - name: collabora
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          env:
+            - name: domain
+              value: {{ .Values.wopiDomain | quote }}
+            - name: username
+              valueFrom:
+                secretKeyRef:
+                  name: collabora-secrets
+                  key: username
+            - name: password
+              valueFrom:
+                secretKeyRef:
+                  name: collabora-secrets
+                  key: password
+            # TLS terminates at the nginx ingress; coolwsd serves plain HTTP internally.
+            - name: extra_params
+              value: "--o:ssl.enable=false --o:ssl.termination=true"
+            - name: DONT_GEN_SSL_CERT
+              value: "true"
+          ports:
+            - containerPort: 9980
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collabora
+  namespace: collabora
+spec:
+  type: ClusterIP
+  selector:
+    app: collabora
+  ports:
+    - name: http
+      protocol: TCP
+      port: 9980
+      targetPort: 9980
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: collabora
+  namespace: collabora
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: {{ .Values.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: collabora
+                port:
+                  number: 9980
+  tls:
+    - secretName: collabora-tls
+      hosts:
+        - {{ .Values.host }}
