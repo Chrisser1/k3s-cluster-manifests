@@ -106,15 +106,43 @@ Longhorn UI → Node → target node → add a unique tag (e.g. `minecraft`). On
 
 **2. Set the volume's node selector to the tag**
 
-Longhorn UI → Volume → the workload's volume → Update Node Selector → the tag from step 1. The existing replica now violates the selector; Longhorn keeps it, but any *new* replica must land on the tagged node.
+The Longhorn UI's per-volume "Operation" menu (the one you get from checking a volume in the list and clicking the dropdown, or from a single volume's detail page) does **not** include an "Update Node Selector" action in this version, even though it has an entry for nearly every other volume field (replica count, data locality, anti-affinity, etc.). Node selector isn't UI-editable here — set it via `kubectl` instead:
+
+```bash
+kubectl patch volumes.longhorn.io -n longhorn-system <volume-name> \
+  --type=merge -p '{"spec":{"nodeSelector":["<tag-from-step-1>"]}}'
+```
+
+`<volume-name>` is the `pvc-...` name shown as the PVC's `VOLUME` in `kubectl get pvc -n <namespace>`, or find it in the Longhorn UI's Volume list. The existing replica now violates the selector; Longhorn keeps it running, but any *new* replica must land on the tagged node.
 
 **3. Scale replicas to 2**
 
-On the same volume, set replica count to 2. The new replica's only legal home is the target node, so it syncs there. Wait until both replicas show `Healthy`.
+In the Longhorn UI, this one *is* a real dropdown action ("Update Replicas Count"), or via `kubectl`:
 
-**4. Scale replicas back to 1**
+```bash
+kubectl patch volumes.longhorn.io -n longhorn-system <volume-name> \
+  --type=merge -p '{"spec":{"numberOfReplicas":2}}'
+```
 
-Longhorn removes the replica that violates the node selector — the old one — leaving the data solely on the target node.
+The new replica's only legal home is the target node, so it syncs there. Wait until the volume's `status.robustness` is `healthy` again (check via `kubectl get volumes.longhorn.io -n longhorn-system <volume-name> -o jsonpath='{.status.robustness}'`, or the UI's volume list — it'll show `Degraded` mid-rebuild, then `Healthy`).
+
+**4. Scale replicas back to 1 — then manually remove the stale replica**
+
+```bash
+kubectl patch volumes.longhorn.io -n longhorn-system <volume-name> \
+  --type=merge -p '{"spec":{"numberOfReplicas":1}}'
+```
+
+Longhorn does *not* promptly remove the replica that violates the node selector on its own (observed >3 minutes with no change). List the replicas and delete the one **not** on the target node yourself:
+
+```bash
+kubectl get replicas.longhorn.io -n longhorn-system -l longhornvolume=<volume-name> \
+  -o custom-columns=NAME:.metadata.name,NODE:.spec.nodeID,STATE:.status.currentState
+
+kubectl delete replicas.longhorn.io -n longhorn-system <replica-name-on-old-node>
+```
+
+This is safe once step 3 confirmed `healthy` — that means the new replica is a complete, in-sync copy (verify via `kubectl get engines.longhorn.io -n longhorn-system <volume-name>-e-0 -o jsonpath='{.status.replicaModeMap}'`, both should show `RW`) before deleting the old one. In the Longhorn UI, the same removal is available from the volume's detail page → Replicas tab → the trash icon next to the specific replica.
 
 **5. Move the pod**
 
