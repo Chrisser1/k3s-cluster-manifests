@@ -10,7 +10,7 @@ minecraft:
     type: FORGE
     version: "1.20.1"
     serviceType: LoadBalancer
-    memory: 14336M
+    memory: 11264M
     motd: "star-technology"
     overrideServerProperties: false
     rcon:
@@ -24,9 +24,9 @@ minecraft:
 
   resources:
     requests:
-      memory: 14Gi
+      memory: 12Gi
     limits:
-      memory: 16Gi
+      memory: 13Gi
 
   persistence:
     dataDir:
