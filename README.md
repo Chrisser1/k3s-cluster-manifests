@@ -74,6 +74,12 @@ Copy `.github/workflows/deploy.yml` from the GymBros repo as a starting point.
 
 There's no self-hosted runner managed by this repo or the cluster's NixOS config anymore — builds reach the internal registry over Tailscale instead. Configure the runner in the app repo's own CI setup.
 
+## Family photos (Nextcloud + Immich)
+
+Both apps read the same files on one shared RWX volume. See
+[docs/family-photos.md](docs/family-photos.md) for the folder layout, how
+per-family isolation is enforced, and the procedure for adding a new person.
+
 ## Storage (Longhorn)
 
 The cluster uses [Longhorn](https://longhorn.io) for distributed block storage. It is deployed via `argocd-apps/longhorn.yaml` and is the default storage class, new PVCs automatically use it.
