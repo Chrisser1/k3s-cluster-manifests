@@ -52,8 +52,12 @@ spec:
           ports:
             - containerPort: 5432
           volumeMounts:
+            # subPath gives Postgres a clean empty directory: the Longhorn volume
+            # root is an ext4 mount point containing lost+found, which makes
+            # initdb refuse to initialise the cluster.
             - name: data
               mountPath: /var/lib/postgresql/data
+              subPath: pgdata
             - name: shm
               mountPath: /dev/shm
           resources:
