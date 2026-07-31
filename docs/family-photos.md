@@ -22,14 +22,21 @@ deployed into the `nextcloud` namespace rather than its own.
     Chris/          # one folder per person
     Thomsen/
     _Shared/        # whole-family photos
-  Roer/
-    Thomas/
-    Ebbe/
-    _Shared/
 ```
 
-Isolation between the two families is enforced by *who each mount is applicable
-to*, not by folder naming. A family only ever sees its own subtree.
+Isolation between families is enforced by *who each mount is applicable to*, not
+by folder naming. A family only ever sees its own subtree.
+
+**Immich is opt-in per family.** Only the Thomsen family uses it, so only
+`Thomsen/` exists on this volume. The Roer family uses plain Nextcloud — their
+photos stay in their normal Nextcloud home storage and never touch this volume.
+
+That distinction matters: the Immich pod mounts the *whole* volume read-only, so
+anything placed here is readable by the Immich process whether or not a library
+points at it. Keeping a family's data off this volume is the real guarantee —
+not merely declining to create a library for them. If a family wants a shared
+folder but not Immich, use a normal Nextcloud share to their `family-*` group
+instead of an external mount.
 
 ## How Nextcloud exposes it
 
@@ -38,15 +45,24 @@ storage mount, scoped to a single user or a single family group:
 
 | Mount point | Backing path | Applicable to |
 |---|---|---|
-| `Photos` | `Thomsen/Chris` | user `Chris` |
-| `Photos` | `Thomsen/Thomsen` | user `Thomsen` |
-| `Photos` | `Roer/Thomas` | user `Thomas Skou Roer` |
-| `Photos` | `Roer/Ebbe` | user `ebberoer` |
+| `Immich` | `Thomsen/Chris` | user `Chris` |
 | `Family Photos` | `Thomsen/_Shared` | group `family-thomsen` |
-| `Family Photos` | `Roer/_Shared` | group `family-roer` |
 
-Every person sees the same two folder names (`Photos`, `Family Photos`); the
-mount they resolve to differs per user.
+Everyone in a family sees the same mount names; the folder each resolves to
+differs per user.
+
+> **Never name a mount after a folder the user already has.** Nextcloud mounts
+> external storage *over* an existing folder of the same name, so a mount called
+> `Photos` silently hides a real `Photos` folder — the files are untouched on
+> disk but vanish from the UI, which looks exactly like data loss. Three of four
+> users here already had a `Photos` folder. Check first:
+>
+> ```bash
+> kubectl -n nextcloud exec $NCPOD -c nextcloud -- ls /var/www/html/data/<uid>/files/
+> ```
+>
+> `Immich` was chosen as the mount name precisely because it collides with
+> nothing and states what the folder feeds.
 
 > External Storage was chosen over Groupfolders deliberately: Groupfolders keeps
 > data inside Nextcloud's own opaque internal directory structure, which Immich
@@ -91,11 +107,27 @@ alias occ="kubectl -n nextcloud exec $NCPOD -c nextcloud -- php occ"
    mount is applicable to *every* user until you restrict it:
 
    ```bash
-   occ files_external:create "Photos" local null::null \
+   # Check the name is free first - see the shadowing warning above
+   occ files_external:create "Immich" local null::null \
      -c datadir=/mnt/family-photos/Thomsen/TheirName
    # note the returned id, then:
    occ files_external:applicable <id> --add-user theiruid
    occ files_external:verify <id>          # expect: status: ok
+   ```
+
+   If the person already has photos in their Nextcloud home that should appear
+   in Immich, they must be *copied onto the shared volume* — Immich cannot read
+   Nextcloud's internal storage. Copy first, verify with checksums, and only
+   delete the originals once both Nextcloud and Immich show the photos:
+
+   ```bash
+   SRC=/var/www/html/data/theiruid/files/Photos
+   DST=/mnt/family-photos/Thomsen/TheirName
+   kubectl -n nextcloud exec $NCPOD -c nextcloud -- sh -c "
+     cd $SRC && find . -type f -print0 | xargs -0 md5sum | sort -k2 > /tmp/src.txt
+     rsync -a $SRC/ $DST/ && chown -R 33:33 $DST
+     cd $DST && find . -type f -print0 | xargs -0 md5sum | sort -k2 > /tmp/dst.txt
+     diff -q /tmp/src.txt /tmp/dst.txt && echo VERIFIED_IDENTICAL"
    ```
 
 5. **Verify the scoping before handing over the account.** This lists every
