@@ -1,0 +1,20 @@
+# Longhorn volumes pinned to queen's dedicated games disk (/mnt/games, tagged
+# `games` on queen's longhorn node CR). Same shape as longhorn-queen-bulk, which
+# does the equivalent for the 3.6T /mnt/data array.
+#
+# reclaimPolicy: Retain — deleting the PVC must not take the save game with it.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn-queen-games
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: driver.longhorn.io
+reclaimPolicy: Retain
+allowVolumeExpansion: true
+parameters:
+  numberOfReplicas: "1"
+  # node tag, not a hostname — queen's longhorn node CR carries tag `queen`
+  nodeSelector: "queen"
+  diskSelector: "games"
+  dataLocality: "best-effort"

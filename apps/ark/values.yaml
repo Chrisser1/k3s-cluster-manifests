@@ -1,0 +1,105 @@
+ark-cluster:
+  fullnameOverride: ark
+
+  nodeSelector:
+    kubernetes.io/hostname: queen
+
+  image:
+    # jammy = Ubuntu 22.04 base, the newest maintained tag
+    tag: jammy
+
+  # The chart ships replicaCount: 0 so servers don't come up on deploy.
+  replicaCount: 1
+  revisionHistoryLimit: 3
+
+  # Cluster id for cross-map character/dino transfers. Changing it later
+  # orphans anything already uploaded, so leave it alone once players exist.
+  clusterName: hivemind
+
+  # ARK tells the client which port to connect on, so the host port has to
+  # equal the container port — no NodePort/LoadBalancer remapping possible.
+  hostPort: true
+
+  containerPorts:
+    gameudp: 7777
+    queryudp: 27015
+    rcon: 32330
+
+  # Both passwords come from the hand-created `ark-secrets` Secret — this repo
+  # is public on GitHub, so a password in values.yaml would be readable by
+  # anyone and the join gate would be worthless. See docs/ark.md.
+  #
+  # The chart only emits its own am_ark_ServerPassword / am_ark_ServerAdminPassword
+  # when `servers.<n>.password` / `rcon.password` are set, so leaving both unset
+  # is what keeps these from colliding with a duplicate env key.
+  extraEnvVars:
+    - name: am_ark_ServerPassword
+      valueFrom:
+        secretKeyRef:
+          name: ark-secrets
+          key: server-password
+    - name: am_ark_ServerAdminPassword
+      valueFrom:
+        secretKeyRef:
+          name: ark-secrets
+          key: admin-password
+
+  resources:
+    requests:
+      cpu: 2
+      memory: 8Gi
+    limits:
+      cpu: 6
+      memory: 16Gi
+
+  # First boot downloads ~25GB of server files from Steam before RCON starts
+  # listening; the chart's 12-minute default budget expires long before that.
+  startupProbe:
+    initialDelaySeconds: 120
+    periodSeconds: 30
+    failureThreshold: 360
+
+  # RCON stalls for a few seconds during world saves — the chart's 30s default
+  # is tight enough to cause restart loops on a large map.
+  livenessProbe:
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    failureThreshold: 6
+
+  persistence:
+    enabled: true
+
+    # storageClass must be set on every volume: the chart renders
+    # `storageClassName: ""` when it's unset, which disables dynamic
+    # provisioning entirely and leaves the PVC Pending forever.
+    # longhorn-queen-games (templates/storageclass.yaml) pins replicas to
+    # queen's dedicated /mnt/games disk, keeping game data off both the
+    # 3.6T array and the OS disk.
+    #
+    # All three volumes are RWO — the chart defaults to RWX for the shared
+    # ones, which would pull in Longhorn's share-manager for no reason while
+    # a single server is the only mounter.
+    game:
+      storageClass: longhorn-queen-games
+      accessModes:
+        - ReadWriteOnce
+      size: 60Gi
+    cluster:
+      storageClass: longhorn-queen-games
+      accessModes:
+        - ReadWriteOnce
+      size: 1Gi
+    save:
+      storageClass: longhorn-queen-games
+      accessModes:
+        - ReadWriteOnce
+      size: 50Gi
+
+  servers:
+    extinction:
+      map: Extinction
+      sessionName: "Hivemind Extinction"
+      # Exactly one server in a cluster does the Steam update; with a single
+      # server that's this one. It also re-updates on every restart.
+      updateOnStart: true
+      maxPlayers: 20

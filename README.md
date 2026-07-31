@@ -80,6 +80,18 @@ Both apps read the same files on one shared RWX volume. See
 [docs/family-photos.md](docs/family-photos.md) for the folder layout, how
 per-family isolation is enforced, and the procedure for adding a new person.
 
+## Game servers
+
+Minecraft (`apps/minecraft`) runs on `bullet`, ARK: Survival Evolved
+(`apps/ark`) on `queen`. Both bind ports directly on their node rather than
+going through an Ingress. See [docs/ark.md](docs/ark.md) for ARK's ports,
+volumes, passwords, the long first-boot download, and how to add a second map.
+
+Note that ARK has a `*.hivemindcloud.dk` hostname (`ark.hivemindcloud.dk`) but
+is **not** an Ingress host, so the `coredns-custom` rule below does *not* apply
+to it — listing it there would resolve it to the ingress ClusterIP, which is
+wrong for a game server.
+
 ## Storage (Longhorn)
 
 The cluster uses [Longhorn](https://longhorn.io) for distributed block storage. It is deployed via `argocd-apps/longhorn.yaml` and is the default storage class, new PVCs automatically use it.

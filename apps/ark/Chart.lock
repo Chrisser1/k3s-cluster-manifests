@@ -1,0 +1,6 @@
+dependencies:
+- name: ark-cluster
+  repository: https://sickhub.github.io/ark-server-charts
+  version: 0.2.2
+digest: sha256:84e45909548d42af7e6e5091059dc1e7d8f30d7797fcfda8a0c1ccd53591d83f
+generated: "2026-07-31T21:56:22.004458663+02:00"

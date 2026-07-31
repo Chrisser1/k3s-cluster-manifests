@@ -1,0 +1,9 @@
+apiVersion: v2
+name: ark
+description: Helm chart for an ARK Survival Evolved server
+type: application
+version: 0.1.0
+dependencies:
+  - name: ark-cluster
+    repository: https://sickhub.github.io/ark-server-charts
+    version: "0.2.2"
