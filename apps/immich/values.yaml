@@ -1,0 +1,122 @@
+# Immich lives in the `nextcloud` namespace on purpose: PVCs are namespace-scoped
+# in Kubernetes, and family-photos-shared (apps/family-photos) is an RWX volume
+# that both Nextcloud and Immich need to mount directly. Longhorn RWX volumes
+# become unstable when referenced by separate PV/PVC pairs across namespaces, so
+# sharing a namespace is the safe way to guarantee both apps see identical files.
+namespace: nextcloud
+
+# Immich requires a Postgres build with the vectorchord extension - a generic
+# Postgres image will fail migrations. This is not bundled by the immich-charts
+# chart, so it's hand-rolled here to exactly match Immich's own reference
+# docker-compose.yml for v2.6.3.
+postgres:
+  image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23
+  database: immich
+  # Must already exist: kubectl -n nextcloud create secret generic immich-db-credentials
+  #   --from-literal=username=immich --from-literal=password=<random>
+  existingSecret: immich-db-credentials
+  persistence:
+    name: immich-postgres-data
+    storageClass: longhorn-queen-bulk
+    size: 20Gi
+  nodeSelector:
+    kubernetes.io/hostname: queen
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 2Gi
+
+# Immich's own derivative storage (thumbnails, encoded video previews, anything
+# uploaded directly through Immich) - separate from family-photos-shared, which
+# holds the actual originals that Nextcloud also serves.
+libraryPersistence:
+  name: immich-library
+  storageClass: longhorn-queen-bulk
+  size: 200Gi
+
+immich:
+  controllers:
+    main:
+      containers:
+        main:
+          env:
+            REDIS_HOSTNAME: '{{ printf "%s-valkey" .Release.Name }}'
+            IMMICH_MACHINE_LEARNING_URL: '{{ printf "http://%s-machine-learning:3003" .Release.Name }}'
+            DB_HOSTNAME: immich-postgres
+            DB_PORT: "5432"
+            DB_DATABASE_NAME: immich
+            DB_USERNAME:
+              valueFrom:
+                secretKeyRef:
+                  name: immich-db-credentials
+                  key: username
+            DB_PASSWORD:
+              valueFrom:
+                secretKeyRef:
+                  name: immich-db-credentials
+                  key: password
+
+  immich:
+    persistence:
+      library:
+        existingClaim: immich-library
+
+  valkey:
+    enabled: true
+
+  server:
+    controllers:
+      main:
+        containers:
+          main:
+            resources:
+              requests:
+                cpu: 250m
+                memory: 512Mi
+              limits:
+                memory: 4Gi
+    # Read-only import source for Immich's "External Libraries" feature
+    # (configured later, per person, via the admin UI) - the same files
+    # Nextcloud has mounted read-write at the same path.
+    persistence:
+      family-photos:
+        existingClaim: family-photos-shared
+        globalMounts:
+          - path: /mnt/family-photos
+            readOnly: true
+    defaultPodOptions:
+      nodeSelector:
+        kubernetes.io/hostname: queen
+    ingress:
+      main:
+        enabled: true
+        className: nginx
+        annotations:
+          cert-manager.io/cluster-issuer: letsencrypt-prod
+          nginx.ingress.kubernetes.io/proxy-body-size: "0"
+        hosts:
+          - host: photos.hivemindcloud.dk
+            paths:
+              - path: /
+                pathType: Prefix
+                service:
+                  identifier: main
+                  port: http
+        tls:
+          - secretName: immich-tls
+            hosts:
+              - photos.hivemindcloud.dk
+
+  machine-learning:
+    controllers:
+      main:
+        containers:
+          main:
+            resources:
+              requests:
+                cpu: 500m
+                memory: 1Gi
+              limits:
+                memory: 6Gi

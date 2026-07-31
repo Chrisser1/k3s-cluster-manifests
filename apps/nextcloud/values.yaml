@@ -68,6 +68,18 @@ nextcloud:
       limits:
         memory: 16Gi
 
+    # Shared family-photos-shared PVC (apps/family-photos), also mounted by
+    # Immich in this same namespace so both apps see the identical files —
+    # PVCs are namespace-scoped, so Immich lives in the nextcloud namespace too.
+    extraVolumes:
+      - name: family-photos
+        persistentVolumeClaim:
+          claimName: family-photos-shared
+
+    extraVolumeMounts:
+      - name: family-photos
+        mountPath: /mnt/family-photos
+
   internalDatabase:
     enabled: false
 

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: family-photos
+description: Shared ReadWriteMany photo/video library volume mounted by both Nextcloud and Immich
+type: application
+version: 0.1.0

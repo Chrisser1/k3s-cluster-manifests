@@ -1,0 +1,10 @@
+# Both Nextcloud and Immich mount this PVC directly, so it lives in the same
+# namespace as Nextcloud (PVCs are namespace-scoped in Kubernetes; Longhorn RWX
+# volumes become unstable if referenced by separate PV/PVC pairs across
+# namespaces, so Immich is deployed into this same namespace to mount it).
+namespace: nextcloud
+
+persistence:
+  name: family-photos-shared
+  storageClass: longhorn-queen-bulk
+  size: 1Ti
