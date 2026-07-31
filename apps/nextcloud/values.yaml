@@ -112,6 +112,33 @@ nextcloud:
     auth:
       enabled: false
 
+    # Nextcloud uses this purely as a cache and lock store, so a single node is
+    # enough - the chart's default 3 read replicas just held redundant copies.
+    architecture: standalone
+
+    commonConfiguration: |-
+      # No persistence: nothing here needs to outlive a restart. The chart's
+      # default `appendonly yes` is what turned a single OOM kill into a
+      # permanent crash loop, since every restart faithfully reloaded the
+      # oversized dataset that caused the kill in the first place.
+      appendonly no
+      save ""
+      # Without maxmemory Redis grows unbounded until the kernel OOM-kills the
+      # container. This must stay comfortably below the container memory limit
+      # below, so Redis evicts its own cold keys before the kernel intervenes.
+      maxmemory 512mb
+      maxmemory-policy allkeys-lru
+
+    master:
+      persistence:
+        enabled: false
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          memory: 768Mi
+
   persistence:
     enabled: true
     storageClass: longhorn-queen-bulk
