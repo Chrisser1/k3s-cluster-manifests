@@ -25,6 +25,25 @@ ark-cluster:
     queryudp: 27015
     rcon: 32330
 
+  # Steam Workshop IDs, downloaded into the shared `ark-game` volume by the
+  # server with `updateOnStart: true`. This list is the single source of truth:
+  # the chart passes it as `am_ark_GameModIds`, which becomes `?GameModIds=` on
+  # the server command line and overrides `ActiveMods=` in GameUserSettings.ini
+  # — so don't also list them there.
+  #
+  # Order matters. Primal Fear must load before its own expansions, and the
+  # small utility mods go last so nothing they touch is loaded after them.
+  mods:
+    - "731604991"   # Structures Plus (S+)
+    - "839162288"   # Primal Fear                       (~3.1G, by far the largest)
+    - "1315573129"  # Primal Fear Aberration Expansion
+    - "2200048898"  # Primal Fear Genesis Expansion
+    - "1681125667"  # Primal Fear Extinction Expansion
+    - "902157012"   # Primal Fear Scorched Earth Expansion
+    - "630601751"   # Resource Stacks
+    - "693416678"   # Reusable Plus
+    - "1404697612"  # Awesome SpyGlass!
+
   # Both passwords come from the hand-created `ark-secrets` Secret — this repo
   # is public on GitHub, so a password in values.yaml would be readable by
   # anyone and the join gate would be worthless. See docs/ark.md.
@@ -103,3 +122,84 @@ ark-cluster:
       # server that's this one. It also re-updates on every restart.
       updateOnStart: true
       maxPlayers: 20
+
+      # Verbatim copy of the chart's own files/GameUserSettings.ini (ark-cluster
+      # 0.2.2), with only the four rate/difficulty lines below changed. It is
+      # rendered through Helm's `tpl`, so the `.server.*` placeholders must stay
+      # — they're what still feeds sessionName/password/message in from above.
+      # Re-diff this block against the chart file after a chart bump.
+      #
+      # Changed from the chart defaults:
+      #   HarvestAmountMultiplier    1.9 -> 3.0   (3x gathering)
+      #   TamingSpeedMultiplier      3.0 -> 10.0  (10x taming)
+      #   OverrideOfficialDifficulty 5.0 -> 10.0  (wild dinos to lvl 300)
+      #   DifficultyOffset           1.0 (unchanged — 1.0 is what lets the
+      #                              override above take full effect)
+      #
+      # Note the chart's `xpMultiplier` shortcut only applies when no custom
+      # GameUserSettingsIni is given; now that one is, XPMultiplier lives here.
+      customConfigMap:
+        GameUserSettingsIni: |
+          [/Script/ShooterGame.ShooterGameUserSettings]
+          Version=5
+          [ServerSettings]
+          AllowFlyerCarryPvE=True
+          AllowThirdPersonPlayer=True
+          AlwaysNotifyPlayerLeft=False
+          AutoSavePeriodMinutes=15.000000
+          ClampResourceHarvestDamage=False
+          DifficultyOffset=1.000000
+          OverrideOfficialDifficulty=10.000000
+          DisableStructureDecayPvE=False
+          DontAlwaysNotifyPlayerJoined=False
+          EnablePvPGamma=False
+          GlobalVoiceChat=False
+          KickIdlePlayersPeriod=2400.000000
+          NoTributeDownloads=False
+          ProximityChat=False
+          ProximityVoiceChat=False
+          PvEStructureDecayDestructionPeriod=0.000000
+          ServerCrosshair=True
+          ServerForceNoHUD=False
+          ServerHardcore=False
+          ServerPassword={{ default "" .server.password }}
+          ServerPVE=True
+          ShowMapPlayerLocation=True
+          TamedDinoDamageMultiplier=1.000000
+          TamedDinoResistanceMultiplier=1.000000
+          StructurePreventResourceRadiusMultiplier=1.000000
+          RaidDinoCharacterFoodDrainMultiplier=1.000000
+          PvEDinoDecayPeriodMultiplier=1.000000
+          PerPlatformMaxStructuresMultiplier=1.000000
+          ListenServerTetherDistanceMultiplier=1.000000
+          MaxTamedDinos=5000.000000
+          RCONServerGameLogBuffer=600.000000
+          AllowHitMarkers=True
+          TamingSpeedMultiplier=10.000000
+          AllowCaveBuildingPvE=True
+          AllowAnyoneBabyImprintCuddle=True
+          ShowFloatingDamageText=True
+          NonPermanentDiseases=True
+          HarvestAmountMultiplier=3.000000
+          PreventDownloadSurvivors=False
+          PreventDownloadItems=False
+          PreventDownloadDinos=False
+          PreventUploadSurvivors=False
+          PreventUploadItems=False
+          PreventUploadDinos=False
+          TribeLogDestroyedEnemyStructures=True
+          TheMaxStructuresInRange=10500.000000
+          XPMultiplier={{ default 1 .server.xpMultiplier }}
+          ActiveMods=
+
+          [SessionSettings]
+          SessionName={{ .server.sessionName }}
+
+          [/Script/Engine.GameSession]
+
+          [MessageOfTheDay]
+          Message={{ if .server.message }}{{ .server.message }}{{ else }}Welcome on ARK {{ .server.sessionName }}{{ end }}
+          Duration=5
+
+          [/Game/PrimalEarth/CoreBlueprints/TestGameMode.TestGameMode_C]
+          bServerGameLogEnabled=True

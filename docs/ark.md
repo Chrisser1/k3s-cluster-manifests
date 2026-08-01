@@ -174,13 +174,58 @@ restart, so restarting after an ARK patch is enough to update it.
 difficulty). Changing them changes the ConfigMap checksum, which restarts the
 server automatically. Note that the chart's `xpMultiplier` shortcut only applies
 if you *don't* supply your own `GameUserSettingsIni` — once you do, it has to be
-set inside that block.
+set inside that block. (We do, so `XPMultiplier` lives in the ini.)
+
+Only `GameUserSettingsIni` is overridden; `Game.ini` and `Engine.ini` still come
+from the chart's own defaults. The override is a verbatim copy of the chart's
+`files/GameUserSettings.ini` with these lines changed — re-diff it against the
+chart after a chart bump, or upstream changes get silently dropped:
+
+| Setting | Chart default | Ours | Effect |
+|---------|---------------|------|--------|
+| `HarvestAmountMultiplier` | 1.9 | **3.0** | 3× resources per harvest |
+| `TamingSpeedMultiplier` | 3.0 | **10.0** | 10× taming speed |
+| `OverrideOfficialDifficulty` | 5.0 | **10.0** | Wild dinos up to level 300 |
+| `DifficultyOffset` | 1.0 | 1.0 | Unchanged — 1.0 is what lets the override apply in full |
+
+`OverrideOfficialDifficulty` is the one that actually sets the level cap;
+official servers max out at 5.0 (level 150). Raising it only affects dinos that
+spawn *after* the change, so existing wild dinos stay at their old levels until
+they're killed or the world is wiped.
 
 ## Mods
 
 Add Steam Workshop IDs as strings under `mods:` in `values.yaml`. They're
 downloaded by whichever server has `updateOnStart: true` (ours), into the shared
 `ark-game` volume. Large modpacks may need `persistence.game.size` raised.
+
+The chart passes the list as `am_ark_GameModIds`, which arkmanager turns into
+`?GameModIds=` on the server command line. That takes precedence over
+`ActiveMods=` in `GameUserSettings.ini`, so `ActiveMods` is deliberately left
+empty in our override — `mods:` is the single source of truth. **Order matters**:
+Primal Fear has to load before its own expansions.
+
+| ID | Mod |
+|----|-----|
+| `731604991` | Structures Plus (S+) |
+| `839162288` | Primal Fear (~3.1 GB — by far the largest) |
+| `1315573129` | Primal Fear Aberration Expansion |
+| `2200048898` | Primal Fear Genesis Expansion |
+| `1681125667` | Primal Fear Extinction Expansion |
+| `902157012` | Primal Fear Scorched Earth Expansion |
+| `630601751` | Resource Stacks |
+| `693416678` | Reusable Plus |
+| `1404697612` | Awesome SpyGlass! |
+
+**Clients must subscribe to the same mods** in the Steam Workshop before they
+can join — ARK does not push mods to clients. A client missing one is rejected
+at connect time.
+
+Adding mods makes the next start much slower: arkmanager downloads ~3.6 GB from
+the Workshop and then extracts it, and both the download and the extracted copy
+live on `ark-game` (budget roughly double the download size). Watch it with the
+same `logs -f` command as [first boot](#first-boot-takes-a-long-time). The 3-hour
+startup budget covers it.
 
 ## Adding a second map
 
