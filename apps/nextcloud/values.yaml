@@ -2,7 +2,7 @@ nextcloud:
   image:
     registry: docker.io
     repository: library/nextcloud
-    tag: 34.0.2-apache
+    tag: 34.0.3-apache
 
   replicaCount: 1
 
