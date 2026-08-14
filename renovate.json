@@ -9,7 +9,37 @@
       "/^argocd-apps/.*\\.yaml$/"
     ]
   },
+  "helmv3": {
+    "postUpdateOptions": [
+      "helmUpdateSubChartArchives"
+    ]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Image tags pinned via a `# renovate:` annotation, where the chart supplies the repository and only the tag is overridden",
+      "managerFilePatterns": [
+        "/^apps/.*/values\\.yaml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+image:\\s+tag: (?<currentValue>\\S+)"
+      ]
+    }
+  ],
   "packageRules": [
+    {
+      "description": "The in-cluster registry is only reachable from the cluster, so Renovate can neither authenticate nor list tags there. gymbros tags are bumped by CI on every commit anyway.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["/^\\d{1,3}(?:\\.\\d{1,3}){3}:\\d+//"],
+      "enabled": false
+    },
+    {
+      "description": "argocd Applications track this same repo at HEAD; there is no version to bump",
+      "matchManagers": ["argocd"],
+      "matchDatasources": ["git-tags"],
+      "matchPackageNames": ["https://github.com/Clusterforgers/k3s-cluster-manifests.git"],
+      "enabled": false
+    },
     {
       "description": "Default: Do not automerge Helm charts",
       "matchDatasources": ["helm"],
@@ -19,15 +49,35 @@
     {
       "description": "Trust list: Automerge these specific Helm charts",
       "matchDatasources": ["helm"],
-      "matchPackageNames": ["gymbros", "ingress-nginx", "cert-manager"],
+      "matchPackageNames": ["ingress-nginx", "cert-manager"],
       "automerge": true
     },
     {
-      "description": "Docker: Automerge minor and patch updates (excludes gymbros, managed by CI)",
+      "description": "Docker: Automerge minor and patch updates",
       "matchDatasources": ["docker"],
       "matchUpdateTypes": ["minor", "patch"],
-      "matchPackageNames": ["!gymbros-backend", "!gymbros-frontend"],
       "automerge": true
+    },
+    {
+      "description": "Nextcloud only supports upgrading one major at a time, so majors are reviewed by hand and never grouped away",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["docker.io/library/nextcloud"],
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
+      "description": "Immich majors have carried breaking database migrations (v3.0.0 dropped pgvecto.rs); review by hand",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["ghcr.io/immich-app/immich-server"],
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
+      "description": "A Postgres major is a data migration (pg_upgrade or dump/restore), not an image swap - swapping the tag leaves the new binary pointed at an old data directory and the pod will not start. Immich's own reference compose pins the 14 line.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["ghcr.io/immich-app/postgres"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
     },
     {
       "description": "Traefik: Update on Monday",

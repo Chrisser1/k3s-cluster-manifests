@@ -48,6 +48,10 @@ immich:
           # machine-learning components, which must always run the same version.
           # Safe for v3: this install was created fresh on vectorchord (vchord),
           # not the pgvecto.rs extension that v3.0.0 dropped support for.
+          # The annotation is what lets Renovate track this tag: the chart owns
+          # `repository` (it differs per component), so only `tag` appears here
+          # and the helm-values manager has nothing to key off on its own.
+          # renovate: datasource=docker depName=ghcr.io/immich-app/immich-server
           image:
             tag: v3.1.0
           env:

@@ -1,4 +1,9 @@
 nextcloud:
+  image:
+    registry: docker.io
+    repository: library/nextcloud
+    tag: 34.0.2-apache
+
   replicaCount: 1
 
   nodeSelector:
